@@ -52,5 +52,59 @@
         "centerY": 938,
         "radius": 92,
         "colorString": "#6aa84f"
+      },
+      {
+        "centerX": 1643,
+        "centerY": -219,
+        "radius": 105,
+        "colorString": "#F4B942"
+    },
+      {
+        "centerX": 1036,
+        "centerY": 1250,
+        "radius": 68,
+        "colorString": "#FF674D"
+      },
+      {
+        "centerX": 66,
+        "centerY": -626,
+        "radius": 82,
+        "colorString": "#CDC7E5"
+      },
+      {
+        "centerX": -1120,
+        "centerY": 350,
+        "radius": 53,
+        "colorString": "#17BEBB"
+      },
+      {
+        "centerX": -990,
+        "centerY": 1266,
+        "radius": 35,
+        "colorString": "#D8A47F"
+      },
+      {
+        "centerX": 1913,
+        "centerY": 376,
+        "radius": 130,
+        "colorString": "#97CC04"
+      },
+      {
+        "centerX": -1006,
+        "centerY": -603,
+        "radius": 145,
+        "colorString": "#FF86C8"
+      },
+      {
+        "centerX": 2130,
+        "centerY": 1193,
+        "radius": 166,
+        "colorString": "magenta"
+      },
+      {
+        "centerX": 2120,
+        "centerY": -559,
+        "radius": 44,
+        "colorString": "#0D3B66"
       }
   ]

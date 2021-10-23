@@ -24,15 +24,17 @@ class Probe extends SpaceBody {
 		clouds.visible = ringA.visible = false;
 
 		loadGraphic(AssetPaths.probe__png, true, 32, 32);
-		animation.add("blink", [0, 0, 0, 1, 1, 2, 3, 3], 7, true);
+		animation.add("blink", [0, 1, 2, 3], 8, true);
 		animation.play("blink");
 		this.scale.set(1, 1);
 		this.updateHitbox();
+		this.color = FlxColor.WHITE;
 	}
 
 	override function update(elapsed:Float) {
 		super.update(elapsed);
 		getMidpoint(midpoint);
+		planetNameTooltip.visible = false;
 		if (!hasCollided) {
 			angle = Utils.normalizeAngle(currentBearing.degrees + 90);
 		} else {

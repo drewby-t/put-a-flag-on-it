@@ -2,10 +2,17 @@ package;
 
 import djFlixel.D;
 import flixel.FlxState;
+import flixel.addons.ui.Anchor;
+import flixel.addons.ui.FlxUIGroup;
+import flixel.addons.ui.FlxUIText;
+import flixel.addons.ui.FlxUITooltip.FlxUITooltipStyle;
+import flixel.addons.ui.FlxUITooltip;
 import flixel.graphics.FlxGraphic;
+import flixel.group.FlxGroup;
 import js.html.MouseEvent;
 import ui.AnglePointer;
 import ui.LaunchLog;
+import ui.PlanetInfoBox;
 
 class PlayState extends FlxState {
 	var probe:Probe;
@@ -32,9 +39,25 @@ class PlayState extends FlxState {
 	var bgLower:FlxSprite;
 	var bgUpper:FlxSprite;
 
+	var planetInfoBox:PlanetInfoBox;
+
+	var pingTime = 0.6;
+	var pingTimer:FlxTimer;
+
+	var infoTextGroup:FlxSpriteGroup;
+
 	override public function create() {
 		super.create();
 		D.init();
+
+		if (FlxG.sound.music == null || !FlxG.sound.music.playing) {
+			FlxG.sound.playMusic(AssetPaths.looperman_l_3792505_0268925_cloudscape_x_part_1_x_ramont1no__ogg, 0.2, true);
+		}
+
+		if (Globals.drone == null || !Globals.drone.playing) {
+			Globals.drone = FlxG.sound.play(AssetPaths.assets_sounds_drone__ogg, 0.3, true);
+			Globals.drone.persist = true;
+		}
 
 		Globals.cameras.mainCam = new FlxCamera(0, 0, FlxG.width, FlxG.height, 1);
 		Globals.cameras.mainCam.bgColor = FlxColor.GRAY.getDarkened(0.9);
@@ -70,7 +93,7 @@ class PlayState extends FlxState {
 				var flag = new FlxSprite();
 				flag.width = flag.height;
 				flag.loadGraphic(AssetPaths.flag__png, true, 32, 32);
-				flag.animation.add("wave", [0, 1, 2, 3], 5, true);
+				flag.animation.add("wave", [0, 1, 2, 3], 8, true);
 				flag.animation.play("wave");
 				var flagPlacer = FlxVector.get(1, 1);
 				flagPlacer.degrees = launch.landSiteAngle + 180;
@@ -78,7 +101,8 @@ class PlayState extends FlxState {
 				flag.angle = flagPlacer.degrees + 90;
 				flag.x = body.midpoint.x + flagPlacer.x - flag.width / 2;
 				flag.y = body.midpoint.y + flagPlacer.y - flag.height / 2;
-				landingFlags.add(flag);
+				// landingFlags.add(flag);
+				body.flags.add(flag);
 				flagPlacer.put();
 			}
 		}
@@ -133,17 +157,47 @@ class PlayState extends FlxState {
 		add(accBearing);
 
 		// DEBUG TEXT
-		var resetText = new FlxText(10, FlxG.height - 30, 0, "[R] to recall Probe", 17);
-		add(resetText);
-		resetText.cameras = [Globals.cameras.uiCam];
+		infoTextGroup = new FlxSpriteGroup();
+		var tSize = 15;
+		var numPlanetsText = new FlxText(10, FlxG.height - 30, 0, 'Planets Conquered:  ${getNumPlanetsConquered()}/${Globals.allSpaceBodies.length)}', 23);
+		numPlanetsText.font = AssetPaths.Ubuntu_Bold__ttf;
+		numPlanetsText.color = FlxColor.LIME.getLightened(0.75);
+		var shootText = new FlxText(10, FlxG.height - 30, 0, "[Shift+Click] to fire probe", tSize);
+		shootText.font = AssetPaths.Ubuntu_Bold__ttf;
+		var shootText2 = new FlxText(10, FlxG.height - 30, 0, "[Ctrl+Shift+Click] for more powerful shot", tSize);
+		shootText2.font = AssetPaths.Ubuntu_Bold__ttf;
+		var zoomText = new FlxText(10, FlxG.height - 30, 0, "[Scroll] or [Z/X] to zoom", tSize);
+		zoomText.font = AssetPaths.Ubuntu_Bold__ttf;
+		var resetText = new FlxText(10, FlxG.height - 30, 0, "[R] to recall probe", tSize);
+		resetText.font = AssetPaths.Ubuntu_Bold__ttf;
+		var logText = new FlxText(10, resetText.y - 30, 0, "[L] show/hide launch log", tSize);
+		logText.font = AssetPaths.Ubuntu_Bold__ttf;
+		var logText2 = new FlxText(10, resetText.y - 30, 0, "[K] to show/hide this info", tSize);
+		logText2.font = AssetPaths.Ubuntu_Bold__ttf;
+		D.align.inVLine(0, 0, 200, [numPlanetsText, shootText, shootText2, zoomText, resetText, logText, logText2], "c", 4);
+		infoTextGroup.cameras = [Globals.cameras.uiCam];
 
-		var logText = new FlxText(10, resetText.y - 30, 0, "[L] to toggle launch log", 17);
-		add(logText);
-		logText.cameras = [Globals.cameras.uiCam];
+		infoTextGroup.add(numPlanetsText);
+		infoTextGroup.add(resetText);
+		infoTextGroup.add(logText);
+		infoTextGroup.add(logText2);
+		infoTextGroup.add(zoomText);
+		infoTextGroup.add(shootText);
+		infoTextGroup.add(shootText2);
+		infoTextGroup.y = FlxG.height - 198;
+		infoTextGroup.x = 10;
+		add(infoTextGroup);
+	}
 
-		angleText = new FlxText(10, FlxG.height - 80, 0, "", 17);
-		// add(angleText);
-		angleText.cameras = [Globals.cameras.uiCam];
+	function getNumPlanetsConquered():Int {
+		var num = 0;
+		for (k in Globals.launchDataBySpaceBodyId.keys()) {
+			if (k < 0) {
+				continue;
+			}
+			num++;
+		}
+		return num;
 	}
 
 	function makeBg() {
@@ -190,14 +244,24 @@ class PlayState extends FlxState {
 	override public function update(elapsed:Float) {
 		super.update(elapsed);
 
-		if (FlxG.keys.justPressed.L) {
+		FlxG.mouse.getWorldPosition(FlxG.camera, mousePos);
+
+		if (FlxG.keys.justPressed.L && planetInfoBox == null) {
 			launchLog.visible = !launchLog.visible;
 		}
+		if (FlxG.keys.justPressed.K && planetInfoBox == null) {
+			infoTextGroup.visible = !infoTextGroup.visible;
+		}
 		if (FlxG.keys.justPressed.F) {
-			FlxG.fullscreen = !FlxG.fullscreen;
+			// FlxG.fullscreen = !FlxG.fullscreen;
+		}
+		if (pingTimer != null && pingTimer.active) {
+			var currentAccel = FlxVector.get(probe.velocity.x, probe.velocity.y);
+			pingTimer.time = pingTime * (1 / (currentAccel.length / (probe.speed * 0.75)));
+			currentAccel.put();
 		}
 
-		if (FlxG.keys.justPressed.R && probe.hasFired) {
+		if (FlxG.keys.justPressed.R && probe.hasFired && planetInfoBox == null) {
 			if (!probe.hasLanded) {
 				Globals.addLaunchData({
 					bodyId: -1,
@@ -209,9 +273,20 @@ class PlayState extends FlxState {
 			FlxG.resetState();
 		}
 
+		// tooltip with name
+		if (FlxG.mouse.justMoved && !probe.hasLanded) {
+			for (body in spaceBodies) {
+				var dir = FlxVector.get(mousePos.x - body.midpoint.x, mousePos.y - body.midpoint.y);
+				if (dir.length <= body.radius) {
+					body.planetNameTooltip.visible = true;
+				} else {
+					body.planetNameTooltip.visible = false;
+				}
+			}
+		}
+
 		if (FlxG.mouse.justMoved && !probe.hasFired) {
 			var shootDir = FlxVector.get(mousePos.x - probe.midpoint.x, mousePos.y - probe.midpoint.y);
-			angleText.text = Std.string(Utils.normalizeAngle(-shootDir.degrees));
 			launchBearing.pointerAngle = shootDir.degrees;
 			probe.currentBearing.set(shootDir.x, shootDir.y);
 			shootDir.put();
@@ -231,9 +306,9 @@ class PlayState extends FlxState {
 		}
 
 		var zoomStep = 0.04;
-		var minZoom = 0.3;
+		var minZoom = 0.3 + zoomStep * 1;
 		var maxZoom = 1.4;
-		if (FlxG.mouse.wheel != 0) {
+		if (FlxG.mouse.wheel != 0 && planetInfoBox == null) {
 			Globals.cameras.mainCam.zoom += FlxMath.signOf(FlxG.mouse.wheel) * zoomStep;
 			if (Globals.cameras.mainCam.zoom > maxZoom) {
 				Globals.cameras.mainCam.zoom = maxZoom;
@@ -242,17 +317,27 @@ class PlayState extends FlxState {
 				Globals.cameras.mainCam.zoom = minZoom;
 			}
 		}
+		if (FlxG.keys.pressed.Z && planetInfoBox == null) {
+			Globals.cameras.mainCam.zoom += FlxMath.signOf(-1) * zoomStep;
+			if (Globals.cameras.mainCam.zoom > maxZoom) {
+				Globals.cameras.mainCam.zoom = maxZoom;
+			}
+			if (Globals.cameras.mainCam.zoom < minZoom) {
+				Globals.cameras.mainCam.zoom = minZoom;
+			}
+		}
+		if (FlxG.keys.pressed.X && planetInfoBox == null) {
+			Globals.cameras.mainCam.zoom += FlxMath.signOf(1) * zoomStep;
+			if (Globals.cameras.mainCam.zoom > maxZoom) {
+				Globals.cameras.mainCam.zoom = maxZoom;
+			}
+			if (Globals.cameras.mainCam.zoom < minZoom) {
+				Globals.cameras.mainCam.zoom = minZoom;
+			}
+		}
 
-		FlxG.mouse.getWorldPosition(FlxG.camera, mousePos);
-
-		if (FlxG.mouse.justPressed) {
-			fireProbe();
-
-			var s = new FlxSprite().makeGraphic(4, 4, FlxColor.RED);
-			add(s);
-			s.x = mousePos.x;
-			s.y = mousePos.y;
-			trace(s.x, s.y);
+		if (FlxG.mouse.justPressed && FlxG.keys.pressed.SHIFT) {
+			fireProbe(FlxG.keys.pressed.CONTROL);
 		}
 
 		if (probe.hasFired && !probe.hasLanded) {
@@ -271,6 +356,7 @@ class PlayState extends FlxState {
 		var haveCollided = bodyToProbe.length <= p.radius + b.radius;
 
 		if (haveCollided) {
+			FlxG.sound.play(Random.fromArray([AssetPaths.hit1__ogg, AssetPaths.hit2__ogg]), 0.9);
 			probe.mostRecentlyCollidedBody = b;
 			var probeVelocity = FlxVector.get(p.velocity.x, p.velocity.y);
 			var normal = bodyToProbe.clone().normalize();
@@ -286,6 +372,7 @@ class PlayState extends FlxState {
 			p.velocity.y = probeVelocity.y;
 
 			probe.hasCollided = true;
+			pingTimer.cancel();
 
 			if (Math.abs(p.x - p.last.x) < 0.1 && Math.abs(p.x - p.last.x) < 0.1) {
 				landOn(b, normal);
@@ -304,12 +391,34 @@ class PlayState extends FlxState {
 		probe.hasLanded = true;
 		probe.acceleration.set(0, 0);
 		probe.velocity.set(0, 0);
+		var isFirstLanding = !Globals.launchDataBySpaceBodyId.exists(body.data.id);
 		Globals.addLaunchData({
 			bodyId: body.data.id,
 			landSiteAngle: normal.degrees,
 			originalBearing: probe.originalBearing,
 			launchNumber: Globals.numTotalLaunches
 		});
+		if (isFirstLanding) {
+			FlxTween.tween(Globals.cameras.mainCam.targetOffset, {y: -285}, 1, {ease: FlxEase.quadInOut});
+			FlxTween.tween(Globals.cameras.mainCam, {zoom: 1.2}, 1, {ease: FlxEase.quadInOut});
+			planetInfoBox = new PlanetInfoBox();
+			planetInfoBox.cameras = [Globals.cameras.uiCam];
+			D.align.screen(planetInfoBox);
+			planetInfoBox.y -= 50;
+			add(planetInfoBox);
+			planetInfoBox.onSubmit = (name:String) -> {
+				body.data.name = name;
+				FlxTween.tween(planetInfoBox, {alpha: 0, y: planetInfoBox.y - 60}, 1, {
+					ease: FlxEase.backIn,
+					onComplete: (_) -> {
+						new FlxTimer().start(0.6, (_) -> {
+							FlxG.resetState();
+						});
+					}
+				});
+				FlxG.camera.flash();
+			}
+		}
 	}
 
 	function updateGravityOnProbe() {
@@ -321,28 +430,29 @@ class PlayState extends FlxState {
 		}
 		for (body in spaceBodies) {
 			var probeToBody = FlxVector.get(body.midpoint.x - probe.midpoint.x, body.midpoint.y - probe.midpoint.y);
-			if (probeToBody.length > body.radius * 8) {
+			if (probeToBody.length > body.radius * 9) {
 				continue;
 			}
 			var gravityRatio = 1 / Math.pow(probeToBody.length / 1.1, 2);
 			probeToBody.normalize();
-			var multiplier = 9000 * 10.5;
+			var multiplier = 9000 * 10;
 			probe.acceleration.x += probeToBody.x * gravityRatio * body.radius * multiplier; // TODO: refactor radius to mass somehow?
 			probe.acceleration.y += probeToBody.y * gravityRatio * body.radius * multiplier; // TODO: refactor radius to mass somehow?
 		}
 	}
 
-	public function fireProbe() {
+	public function fireProbe(powerShot:Bool = false) {
 		if (probe.hasFired) {
 			return;
 		}
 		Globals.numTotalLaunches++;
+		FlxG.sound.play(AssetPaths.launch__ogg);
 		var shootDir = FlxVector.get(mousePos.x - probe.midpoint.x, mousePos.y - probe.midpoint.y);
 		shootDir.normalize();
 		probe.originalBearing = shootDir.degrees;
 
-		probe.thrust.x = shootDir.x * probe.speed;
-		probe.thrust.y = shootDir.y * probe.speed;
+		probe.thrust.x = shootDir.x * probe.speed * (powerShot ? 1.33 : 1);
+		probe.thrust.y = shootDir.y * probe.speed * (powerShot ? 1.33 : 1);
 		probe.hasFired = true;
 
 		thrustTimer = new FlxTimer().start(1, (_) -> {
@@ -351,6 +461,8 @@ class PlayState extends FlxState {
 		});
 
 		shootDir.put();
+
+		startProbeNoise(pingTime);
 
 		probeDustTimer = new FlxTimer().start(0.1, (_) -> {
 			var d = new FlxSprite();
@@ -361,5 +473,14 @@ class PlayState extends FlxState {
 			D.align.YAxis(d, probe);
 			FlxTween.tween(d, {alpha: 0.5, 'scale.x': 0, 'scale.y': 0}, 6);
 		}, 0);
+	}
+
+	function startProbeNoise(waitTime:Float) {
+		pingTimer = new FlxTimer().start(waitTime, (_) -> {
+			FlxG.sound.play(AssetPaths.ping__ogg);
+			var currentAccel = FlxVector.get(probe.velocity.x, probe.velocity.y);
+			startProbeNoise(pingTime * (1 / (currentAccel.length / probe.speed)));
+			currentAccel.put();
+		});
 	}
 }

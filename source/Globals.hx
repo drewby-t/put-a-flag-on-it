@@ -17,6 +17,7 @@ class Globals {
 
 	public static var bgLower:FlxGraphic;
 	public static var bgUpper:FlxGraphic;
+	public static var drone:FlxSound;
 
 	public static var launchDataBySpaceBodyId(default, null):Map<Int, Array<LaunchData>> = new Map<Int, Array<LaunchData>>();
 	public static var launchDataOrdered(default, null):Array<LaunchData> = new Array<LaunchData>();
