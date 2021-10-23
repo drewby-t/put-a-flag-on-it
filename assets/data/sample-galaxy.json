@@ -1,0 +1,56 @@
+[
+    {
+      "centerX": 200,
+      "centerY": 200,
+      "radius": 90,
+      "colorString": "cyan"
+    },
+    {
+      "centerX": -380,
+      "centerY": -10,
+      "radius": 110,
+      "colorString": "green"
+    },
+    {
+      "centerX": 900,
+      "centerY": 600,
+      "radius": 140,
+      "colorString": "blue"
+    },
+    {
+      "centerX": 1200,
+      "centerY": 280,
+      "radius": 50,
+      "colorString": "brown"
+    },
+    {
+      "centerX": 1430,
+      "centerY": 800,
+      "radius": 68,
+      "colorString": "lime"
+    },
+    {
+      "centerX": -480,
+      "centerY": 550,
+      "radius": 82,
+      "colorString": "purple"
+    },
+    {
+      "centerX": 790,
+      "centerY": -365,
+      "radius": 100,
+      "colorString": "orange"
+    },
+    {
+      "centerX": 320,
+      "centerY": 1200,
+      "radius": 105,
+      "colorString": "#3EB489"
+    },
+    {
+        "centerX": -370,
+        "centerY": 938,
+        "radius": 92,
+        "colorString": "#6aa84f"
+      }
+  ]
